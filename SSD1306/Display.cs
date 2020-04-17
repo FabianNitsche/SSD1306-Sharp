@@ -1,5 +1,7 @@
 ﻿using System;
 using SSD1306.I2C;
+using System.Numerics;
+using System.Linq;
 
 namespace SSD1306
 {
@@ -235,6 +237,59 @@ namespace SSD1306
             var page = y / 8;
             var byteToDraw = (byte)(1 << (y % 8));
             DisplayBuffer[page, x] |= byteToDraw;
+        }
+
+        public void DrawLine(Vector2 point1, Vector2 point2)
+        {
+            var direction = point2 - point1;
+
+            var xStart = (int)Math.Round(point1.X);
+            var xEnd = (int)Math.Round(point2.X);
+            var xIncrement = Math.Sign(xEnd - xStart);
+
+            var yStart = (int)Math.Round(point1.Y);
+            var yEnd = (int)Math.Round(point2.Y);
+            var yIncrement = Math.Sign(yEnd - yStart);
+
+            for (int x = xStart; xIncrement * x <= xIncrement * xEnd; x += xIncrement)
+            {
+                for (int y = yStart; yIncrement * y <= yIncrement * yEnd; y += yIncrement)
+                {
+                    if (yIncrement == 0 || xIncrement == 0)
+                    {
+                        DrawPixel(x, y);
+                        if (yIncrement == 0) break;
+                    }
+                    else
+                    {
+                        var scaling = (y - point1.Y) / direction.Y;
+                        var calculatedX = scaling * direction.X + point1.X;
+                        if (x == (int)Math.Round(calculatedX))
+                            DrawPixel(x, y);
+                        else
+                        {
+                            yStart = y;
+                            break;
+                        }
+                    }
+                }
+                if (xIncrement == 0)
+                    break;
+            }
+        }
+
+        public void DrawPolygon(bool closed, params Vector2[] points)
+        {
+            if (points.Length < 2)
+                return;
+
+            for (int i = 1; i < points.Length; i++)
+            {
+                DrawLine(points[i - 1], points[i]);
+            }
+
+            if (closed && points.Length > 2)
+                DrawLine(points.Last(), points.First());
         }
     }
 }
